@@ -4,15 +4,16 @@ namespace ConsoleCalculator
 {
     public class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
             Console.WriteLine("This is a simple calculator mad by Jonathan Sanfer. \n");
-            Calculator calculator = new Calculator();
-            if (args.Length == 1)
+            var printer = new Printer();
+            var calculator = new Calculator(printer);
+            if (args.Length > 0)
             {
                 calculator.ReadFile(args[0]);
             }
-            if (args.Length == 0)
+            else
             {
                 calculator.ReadUserInput();
             }

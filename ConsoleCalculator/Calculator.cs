@@ -1,167 +1,163 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Sockets;
+using static System.Double;
 
 namespace ConsoleCalculator
 {
+    public class Add : ICalculate
+    {
+        public decimal Calculate(decimal x, decimal y)
+        {
+            return x + y;
+        }
+    }
+    
+    public class Sub : ICalculate
+    {
+        public decimal Calculate(decimal x, decimal y)
+        {
+            return x - y;
+        }
+    }
+    
+    public class Mul : ICalculate
+    {
+        public decimal Calculate(decimal x, decimal y)
+        {
+            return x * y;
+        }
+    }
+    
     public class Calculator
     {
-        private List<Cell> register = new List<Cell>();
-
-        private ExpressionHandler myHandler = new ExpressionHandler();
-
-        private bool isInList = false;
-        private string leftVar, rightVar, op, expression = "";
-        private double number;
-
-        private double Calculate(double var, double num, string op)
+        private IPrinter _printer;
+        
+        public Calculator(IPrinter printer)
         {
-            if (op.ToLower() == "add")
-            {
-                return var + num;
-            }
-            if (op.ToLower() == "subtract")
-            {
-                return var - num;
-            }
-            if (op.ToLower() == "multiply")
-            {
-                return var * num;
-            }
-            return 0;
+            _printer = printer;
         }
-
-        private void AddNewCell(string leftVar, string op, double number)
+        
+        private readonly ICalculate _calculateAdd = new Add();
+        
+        private readonly ICalculate _calculateSub = new Sub();
+        
+        private readonly ICalculate _calculateMul = new Mul();
+        
+        private void AddValueToCell(decimal val)
         {
-            if (op.ToLower() == "add")
+            if (val == 0m) return;
+            foreach (var cell in Register.Instance.MyRegister)
             {
-                register.Add(new Cell(leftVar, number));
-            }
-            if (op.ToLower() == "subtract")
-            {
-                var num = 0;
-                register.Add(new Cell(leftVar, num - number));
-            }
-            if (op.ToLower() == "multiply")
-            {
-                register.Add(new Cell(leftVar, 0));
-            }
-        }
-
-        private void ComputeVarAndNum(string expression)
-        {
-            leftVar = expression.Split(" ")[0];
-            op = expression.Split(" ")[1];
-            number = Double.Parse(expression.Split(" ")[2]);
-
-            foreach (Cell cell in register)
-            {
-                if (cell.Id == leftVar)
+                if (cell.Id == Register.Instance.CurrentId)
                 {
-                    cell.Val = Calculate(cell.Val, number, op);
-                    isInList = true;
-                }
-            }
-            if (!isInList)
-            {
-                AddNewCell(leftVar, op, number);
-            }
-            isInList = false;
-        }
-
-        private void ComputeVarAndVar(string expression)
-        {
-            leftVar = expression.Split(" ")[0];
-            op = expression.Split(" ")[1];
-            rightVar = expression.Split(" ")[2];
-            number = 0;
-
-            foreach (Cell cell in register)
-            {
-                if (cell.Id == rightVar)
-                {
-                    number = cell.Val;
-                }
-            }
-
-            foreach (Cell cell in register)
-            {
-                if (cell.Id == leftVar)
-                {
-                    cell.Val = Calculate(cell.Val, number, op);
-                    isInList = true;
-                }
-            }
-
-            if (!isInList)
-            {
-                AddNewCell(leftVar, op, number);
-            }
-            isInList = false;
-        }
-
-        private void PrintCell(string expression)
-        {
-            var id = expression.Split(" ")[1];
-            foreach (Cell cell in register)
-            {
-                if (id == cell.Id)
-                {
-                    Console.WriteLine("{0} has value: {1}", cell.Id, cell.Val);
+                    cell.Val = val;
                 }
             }
         }
-
-        private void PrintRegister()
+        
+        private decimal AddNewCellOrCalculateNewValue(ExpressionHandler.ExpressionType type, 
+            decimal leftNum, decimal rightNum, string leftOperand)
         {
-            foreach (Cell cell in register)
+            var leftNumIsInList = leftNum != 0m;
+            switch (type)
             {
-                Console.WriteLine("{0} has value: {1}", cell.Id, cell.Val);
+                case ExpressionHandler.ExpressionType.AddExpression when leftNumIsInList:
+                    return _calculateAdd.Calculate(leftNum, rightNum);
+                case ExpressionHandler.ExpressionType.AddExpression:
+                    Register.Instance.MyRegister.Add(new Cell(leftOperand, rightNum));
+                    break;
+                case ExpressionHandler.ExpressionType.SubExpression when leftNumIsInList:
+                    return _calculateSub.Calculate(leftNum, rightNum);
+                case ExpressionHandler.ExpressionType.SubExpression:
+                    Register.Instance.MyRegister.Add(new Cell(leftOperand, -rightNum));
+                    break;
+                case ExpressionHandler.ExpressionType.MulExpression when leftNumIsInList:
+                    return _calculateMul.Calculate(leftNum, rightNum);
+                case ExpressionHandler.ExpressionType.MulExpression:
+                    Register.Instance.MyRegister.Add(new Cell(leftOperand, 0));
+                    break;
+            }
+
+            return 0m;
+        }
+        
+        private decimal GetNumber(string operand)
+        {
+            foreach (var cell in Register.Instance.MyRegister)
+            {
+                if (cell.Id == operand)
+                {
+                    Register.Instance.CurrentId = cell.Id;
+                    return cell.Val;
+                }
+            }
+
+            return 0m;
+        }
+        
+        private decimal GetCellVal(string leftOperand, decimal rightNum, string expression)
+        {
+            var type = ExpressionHandler.SetExpressionType(expression);
+            var leftNum = GetNumber(leftOperand);
+            return AddNewCellOrCalculateNewValue(type, leftNum, rightNum, leftOperand);
+        }
+        
+        private void ParseStringAndHandleCellVal(string expression)
+        {
+            try
+            {
+                var leftOperand = expression.Split(" ")[0];
+                var rightOperand = expression.Split(" ")[2];
+                var isNumber = decimal.TryParse(rightOperand, out var rightNum);
+                if (!isNumber)
+                {
+                    rightNum = GetNumber(rightOperand);
+                }
+                var val = GetCellVal(leftOperand, rightNum, expression);
+                AddValueToCell(val);
+            }
+            catch(IndexOutOfRangeException e)
+            {
+                Console.WriteLine(e.Message);
             }
         }
 
-        private void Run(string exp)
+        private void PrintOrCalc(string expression)
         {
-            ExpressionHandler.ExpressionType type = myHandler.SetExpressionType(exp);
+            var type = ExpressionHandler.SetExpressionType(expression);
 
             switch (type)
             {
-                case ExpressionHandler.ExpressionType.varAndNum:
-                    ComputeVarAndNum(exp);
+                case ExpressionHandler.ExpressionType.PrintCell:
+                    _printer.PrintCell(expression);
                     break;
-                case ExpressionHandler.ExpressionType.varAndVar:
-                    ComputeVarAndVar(exp);
-                    break;
-                case ExpressionHandler.ExpressionType.printCell:
-                    PrintCell(exp);
-                    break;
-                case ExpressionHandler.ExpressionType.printRegister:
-                    PrintRegister();
+                case ExpressionHandler.ExpressionType.PrintRegister:
+                    _printer.PrintRegister();
                     break;
                 default:
-                    Console.WriteLine("---Invalid expression---");
+                    ParseStringAndHandleCellVal(expression);
                     break;
             }
         }
 
         public void ReadFile(string args)
         {
-            string[] lines = File.ReadAllLines(args);
-            foreach (string line in lines)
+            var lines = File.ReadAllLines(args);
+            foreach (var line in lines)
             {
-                Run(line);
+                PrintOrCalc(line);
             }
-            Console.WriteLine("Press any key to exit.");
-            Console.ReadKey();
         }
 
         public void ReadUserInput()
         {
+            string expression;
             Console.WriteLine("Waiting for user input...");
-            while (expression.ToLower() != "quit")
+            while ((expression = Console.ReadLine()?.ToLower()) != "quit")
             {
-                expression = Console.ReadLine();
-                Run(expression);
+                PrintOrCalc(expression);
             }
         }
     }

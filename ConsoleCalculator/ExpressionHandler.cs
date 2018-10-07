@@ -2,57 +2,50 @@
 
 namespace ConsoleCalculator
 {
-    public class ExpressionHandler
+    public static class ExpressionHandler
     {
-        private readonly string addPattern1 = @"(?i)^[a-zåäö]+[a-zåäö0-9]* add \d+$";
-        private readonly string subtractPattern1 = @"(?i)^[a-zåäö]+[a-zåäö0-9]* subtract \d+$";
-        private readonly string multiplyPattern1 = @"(?i)^[a-zåäö]+[a-zåäö0-9]* multiply \d+$";
+        private const string AddPattern = @"(?i)^[a-zåäö]+[a-zåäö0-9]* add [a-zåäö0-9]+$";
+        private const string SubPattern = @"(?i)^[a-zåäö]+[a-zåäö0-9]* sub [a-zåäö0-9]+$";
+        private const string MulPattern = @"(?i)^[a-zåäö]+[a-zåäö0-9]* mul [a-zåäö0-9]+$";
 
-        private readonly string addPattern2 = @"(?i)^[a-zåäö]+[a-zåäö0-9]* add [a-zåäö]+[a-zåäö0-9]$";
-        private readonly string subtractPattern2 = @"(?i)^[a-zåäö]+[a-zåäö0-9]* subtract [a-zåäö]+[a-zåäö0-9]*$";
-        private readonly string multiplyPattern2 = @"(?i)^[a-zåäö]+[a-zåäö0-9]* multiply [a-zåäö]+[a-zåäö0-9]*$";
-
-        private readonly string printPattern = @"(?i)^print [a-zåäö]+[a-zåäö0-9]*$";
+        private const string PrintPattern = @"(?i)^print [a-zåäö]+[a-zåäö0-9]*$";
 
         public enum ExpressionType
         {
-            varAndNum,
-            varAndVar,
-            printCell,
-            printRegister,
-            none
+            AddExpression,
+            SubExpression,
+            MulExpression,
+            PrintCell,
+            PrintRegister,
+            None
         };
 
-        public ExpressionType SetExpressionType(string exp)
+        public static ExpressionType SetExpressionType(string exp)
         {
-            Regex rgxAdd1 = new Regex(addPattern1);
-            Regex rgxSubtract1 = new Regex(subtractPattern1);
-            Regex rgxMultiply1 = new Regex(multiplyPattern1);
+            var add = new Regex(AddPattern);
+            var sub = new Regex(SubPattern);
+            var mul = new Regex(MulPattern);
 
-            Regex rgxAdd2 = new Regex(addPattern2);
-            Regex rgxSubtract2 = new Regex(subtractPattern2);
-            Regex rgxMultiply2 = new Regex(multiplyPattern2);
-
-            Regex rgxPrint1 = new Regex(printPattern);
-            Regex rgxPrint2 = new Regex(@"(?i)^print$");
-
-            if (rgxAdd1.IsMatch(exp) || rgxSubtract1.IsMatch(exp) || rgxMultiply1.IsMatch(exp))
+            var printCell = new Regex(PrintPattern);
+            var printAll = new Regex(@"(?i)^print$");
+            
+            if (add.IsMatch(exp))
             {
-                return ExpressionType.varAndNum;
+                return ExpressionType.AddExpression;
             }
-            if (rgxAdd2.IsMatch(exp) || rgxSubtract2.IsMatch(exp) || rgxMultiply2.IsMatch(exp))
+            if (sub.IsMatch(exp))
             {
-                return ExpressionType.varAndVar;
+                return ExpressionType.SubExpression;
             }
-            if (rgxPrint1.IsMatch(exp))
+            if (mul.IsMatch(exp))
             {
-                return ExpressionType.printCell;
+                return ExpressionType.MulExpression;
             }
-            if (rgxPrint2.IsMatch(exp))
+            if (printCell.IsMatch(exp))
             {
-                return ExpressionType.printRegister;
+                return ExpressionType.PrintCell;
             }
-            return ExpressionType.none;
+            return printAll.IsMatch(exp) ? ExpressionType.PrintRegister : ExpressionType.None;
         }
     }
 }

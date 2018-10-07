@@ -2,13 +2,13 @@
 {
     public class Cell
     {
-        public Cell(string variable, double number)
+        public Cell(string variable, decimal number)
         {
             Id = variable;
             Val = number;
         }
 
-        public string Id { get; set; }
-        public double Val { get; set; }
+        public string Id { get; }
+        public decimal Val { get; set; }
     }
 }
